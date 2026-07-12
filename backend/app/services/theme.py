@@ -4,7 +4,6 @@ Atlas - Theme Service
 Logique métier pour les thèmes d'investissement.
 """
 
-import asyncio
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,10 +95,8 @@ class ThemeService:
         await self.get_by_id(theme_id)  # 404 si inexistant
         offset = (page - 1) * page_size
 
-        companies, total = await asyncio.gather(
-            self.repo.get_companies(theme_id, offset=offset, limit=page_size),
-            self.repo.count_companies(theme_id),
-        )
+        companies = await self.repo.get_companies(theme_id, offset=offset, limit=page_size)
+        total = await self.repo.count_companies(theme_id)
 
         return PaginatedResponse[CompanyListItem](
             items=[CompanyListItem.model_validate(c) for c in companies],
