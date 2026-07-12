@@ -99,12 +99,8 @@ class CompanyService:
         """
         offset = (page - 1) * page_size
 
-        # Exécution en parallèle pour minimiser la latence
-        import asyncio
-        companies, total = await asyncio.gather(
-            self.repo.search(params, offset=offset, limit=page_size),
-            self.repo.count_search(params),
-        )
+        companies = await self.repo.search(params, offset=offset, limit=page_size)
+        total = await self.repo.count_search(params)
 
         items = [CompanyListItem.model_validate(c) for c in companies]
 
