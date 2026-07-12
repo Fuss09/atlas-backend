@@ -121,14 +121,14 @@ class Company(AtlasBase):
     # ── Classification ─────────────────────────────────────────────────────────
 
     company_type: Mapped[CompanyType] = mapped_column(
-        Enum(CompanyType, name="company_type_enum"),
+        Enum(CompanyType, name="company_type_enum", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=CompanyType.PUBLIC,
         index=True,
         comment="Type d'entreprise : public, private, etf, spac",
     )
     status: Mapped[CompanyStatus] = mapped_column(
-        Enum(CompanyStatus, name="company_status_enum"),
+        Enum(CompanyStatus, name="company_status_enum", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=CompanyStatus.ACTIVE,
         index=True,
