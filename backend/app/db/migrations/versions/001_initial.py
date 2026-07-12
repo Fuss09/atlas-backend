@@ -31,13 +31,13 @@ def upgrade() -> None:
         sa.Column("hashed_password", sa.Text(), nullable=True),
         sa.Column(
             "auth_provider",
-            sa.Enum("local", "google", "github", name="auth_provider_enum"),
+            postgresql.ENUM("user", "analyst", "admin", name="user_role_enum", create_type=False),
             nullable=False,
         ),
         sa.Column("oauth_provider_id", sa.String(255), nullable=True),
         sa.Column(
             "role",
-            sa.Enum("user", "analyst", "admin", name="user_role_enum"),
+            postgresql.ENUM("user", "analyst", "admin", name="user_role_enum", create_type=False),
             nullable=False,
         ),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
