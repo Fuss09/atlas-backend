@@ -53,7 +53,7 @@ class User(AtlasBase):
     # Authentification
     hashed_password: Mapped[str | None] = mapped_column(Text, nullable=True)
     auth_provider: Mapped[AuthProvider] = mapped_column(
-        Enum(AuthProvider, name="auth_provider_enum"),
+        Enum(AuthProvider, name="auth_provider_enum", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=AuthProvider.LOCAL,
     )
@@ -61,7 +61,7 @@ class User(AtlasBase):
 
     # Rôle et statut
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, name="user_role_enum"),
+        Enum(UserRole, name="user_role_enum", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=UserRole.USER,
     )
