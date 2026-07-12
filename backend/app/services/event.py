@@ -13,7 +13,6 @@ Le service expose aussi les méthodes consommées par l'Opportunity Engine (Modu
 - get_score_boost()        : contribution estimée d'un event au score
 """
 
-import asyncio
 import uuid
 from datetime import UTC, datetime
 
@@ -76,10 +75,8 @@ class EventService:
         page_size: int = 20,
     ) -> PaginatedResponse[EventListItem]:
         offset = (page - 1) * page_size
-        events, total = await asyncio.gather(
-            self.repo.search(params, offset=offset, limit=page_size),
-            self.repo.count_search(params),
-        )
+        events = await self.repo.search(params, offset=offset, limit=page_size)
+        total = await self.repo.count_search(params)
 
         # Batch-fetch companies for this page only — avoids an N+1 while
         # keeping the cost bounded to page_size, same pattern used by
@@ -116,10 +113,8 @@ class EventService:
         if not company:
             raise NotFoundError("Company", company_id)
         offset = (page - 1) * page_size
-        events, total = await asyncio.gather(
-            self.repo.get_for_company(company_id, limit=page_size, offset=offset),
-            self.repo.count_for_company(company_id),
-        )
+        events = await self.repo.get_for_company(company_id, limit=page_size, offset=offset)
+        total = await self.repo.count_for_company(company_id)
         items = []
         for e in events:
             item = EventListItem.model_validate(e)
