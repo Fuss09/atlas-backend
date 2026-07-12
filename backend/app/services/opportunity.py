@@ -82,26 +82,24 @@ class OpportunityScoreService:
         page_size: int = 20,
     ) -> PaginatedResponse[OpportunityListItem]:
         offset = (page - 1) * page_size
-        scores, total = await asyncio.gather(
-            self.repo.list_ranked(
-                offset=offset,
-                limit=page_size,
-                min_score=params.min_score,
-                conviction=params.conviction,
-                stage=params.stage,
-                sector=params.sector,
-                country=params.country,
-                theme_id=params.theme_id,
-                sort=params.sort,
-            ),
-            self.repo.count_ranked(
-                min_score=params.min_score,
-                conviction=params.conviction,
-                stage=params.stage,
-                sector=params.sector,
-                country=params.country,
-                theme_id=params.theme_id,
-            ),
+        scores = await self.repo.list_ranked(
+            offset=offset,
+            limit=page_size,
+            min_score=params.min_score,
+            conviction=params.conviction,
+            stage=params.stage,
+            sector=params.sector,
+            country=params.country,
+            theme_id=params.theme_id,
+            sort=params.sort,
+        )
+        total = await self.repo.count_ranked(
+            min_score=params.min_score,
+            conviction=params.conviction,
+            stage=params.stage,
+            sector=params.sector,
+            country=params.country,
+            theme_id=params.theme_id,
         )
 
         companies_by_id: dict[uuid.UUID, Company] = {}
@@ -146,11 +144,9 @@ class OpportunityScoreService:
         if not company:
             raise NotFoundError("Company", company_id)
 
-        events, themes, discoveries = await asyncio.gather(
-            self.event_repo.get_for_company(company_id, limit=1000),
-            self.theme_repo.get_themes_for_company(company_id),
-            self.discovery_source_repo.get_for_company(company_id),
-        )
+        events = await self.event_repo.get_for_company(company_id, limit=1000)
+        themes = await self.theme_repo.get_themes_for_company(company_id)
+        discoveries = await self.discovery_source_repo.get_for_company(company_id)
 
         event_signals = [
             EventSignal(
