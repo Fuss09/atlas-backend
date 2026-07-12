@@ -70,15 +70,16 @@ def upgrade() -> None:
         # ── Classification ────────────────────────────────────────────────
         sa.Column(
             "company_type",
-            sa.Enum("public", "private", "etf", "spac", name="company_type_enum"),
+            postgresql.ENUM("public", "private", "etf", "spac", name="company_type_enum", create_type=False),
             nullable=False,
             server_default="public",
         ),
         sa.Column(
             "status",
-            sa.Enum(
+            postgresql.ENUM(
                 "active", "inactive", "acquired", "bankrupt", "merged",
                 name="company_status_enum",
+                create_type=False,
             ),
             nullable=False,
             server_default="active",
