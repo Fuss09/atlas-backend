@@ -56,7 +56,6 @@ async def get_sources() -> list[AvailableSource]:
     "/jobs",
     response_model=list[DiscoveryJobSummary],
     summary="Historique des discovery jobs",
-    dependencies=[Depends(require_analyst)],
 )
 async def list_jobs(
     discovery_service: DiscoveryServiceDep,
@@ -119,7 +118,6 @@ async def run_job_sync(
     "/jobs/{job_id}",
     response_model=DiscoveryJobResponse,
     summary="Détail d'un discovery job",
-    dependencies=[Depends(require_analyst)],
 )
 async def get_job(
     job_id: UUID,
