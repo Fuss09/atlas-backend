@@ -24,6 +24,7 @@ from app.models import event  # noqa: F401
 from app.models import opportunity  # noqa: F401
 from app.models import watchlist  # noqa: F401
 from app.models import snapshot  # noqa: F401
+from app.models import catalyst  # noqa: F401
 from app.models import graph  # noqa: F401
 from app.core.config import get_settings
 
