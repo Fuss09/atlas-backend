@@ -15,12 +15,24 @@ données ou à FastAPI. Il ne connaît que des structures de données simples
   l'API ni le OpportunityScoreService qui l'appelle — seule cette classe
   serait remplacée, et OpportunityResult resterait le contrat de sortie.
 
-Composants du score (pondération par défaut, scoring_version=1) :
-- Events              35 % — signaux détectés (SEC, FDA, funding, brevets…)
+Composants du score (pondération scoring_version=2) :
+- Events              55 % — signaux détectés (SEC, FDA, funding, brevets…)
+- Discovery Signals   25 % — corroboration multi-sources et fraîcheur
 - Theme Strength      20 % — maturité et alignement des thèmes de l'entreprise
-- Company Quality     25 % — complétude et solidité du profil entreprise
-- Discovery Signals   20 % — corroboration multi-sources et fraîcheur
+- Company Quality      0 % — calculé et exposé à titre informatif (indice de
+                             confiance des données), mais NE contribue PLUS au
+                             score : la complétude d'une fiche mesure la qualité
+                             de notre collecte, pas la qualité de l'opportunité.
 - Market Signals       0 % — structure prête, volontairement non connecté
+
+Historique des versions :
+- v1 : events 35 / themes 20 / quality 25 / discovery 20. Problème observé :
+  quality et themes quasi constants sur tout l'univers → ~45 % du score était
+  un plancher fixe, les scores s'aggloméraient (43-53 sur le dataset de démo)
+  et ne discriminaient pas.
+- v2 : quality sorti du score (poids 0, toujours calculé/exposé), redistribution
+  vers events (le composant porteur d'information réelle) et discovery
+  (corroboration observée). Les seuils de conviction sont inchangés.
 
 La somme des poids actifs fait toujours 100 %. Le jour où Market Signals sera
 connecté à une vraie source de données de marché, les poids seront
@@ -150,10 +162,10 @@ class OpportunityResult:
 # ─── Constantes de calcul ───────────────────────────────────────────────────────
 
 WEIGHTS: dict[str, float] = {
-    "events": 0.35,
+    "events": 0.55,
     "theme_strength": 0.20,
-    "company_quality": 0.25,
-    "discovery_signals": 0.20,
+    "company_quality": 0.0,  # informatif uniquement depuis v2 — voir docstring module
+    "discovery_signals": 0.25,
     "market_signals": 0.0,  # structure prête, non connecté — voir docstring module
 }
 
@@ -166,6 +178,14 @@ MATURITY_POTENTIAL: dict[str, float] = {
 # Demi-vie (en jours) de la pertinence d'un event dans le score.
 # Un event garde 50% de son poids initial après ce nombre de jours.
 EVENT_RECENCY_HALF_LIFE_DAYS = 90.0
+
+# Total de boosts (après décroissance) qui sature le composant events à 100.
+# Ancré sur la table EVENT_TYPE_SCORE_BOOST : un trimestre exceptionnel
+# (ex : approbation FDA critique 20 + levée de fonds 12 + achats d'initiés
+# récents ~10 + partenariat ~6) totalise ≈ 50. Sans cette normalisation, le
+# composant plafonnait de fait vers 40/100 et son poids affiché mentait
+# (55 % nominal ≈ 22 % effectif). Introduit en scoring_version=2.
+EVENTS_SATURATION_TOTAL = 50.0
 
 # Demi-vie (en jours) de la fraîcheur d'une découverte.
 DISCOVERY_FRESHNESS_HALF_LIFE_DAYS = 180.0
@@ -182,7 +202,7 @@ class OpportunityEngine:
         )
     """
 
-    SCORING_VERSION = 1
+    SCORING_VERSION = 2
 
     def compute(
         self,
@@ -250,7 +270,7 @@ class OpportunityEngine:
             elif len(negative) < 5:
                 negative.append(label)
 
-        value = max(0.0, min(100.0, total))
+        value = max(0.0, min(100.0, (total / EVENTS_SATURATION_TOTAL) * 100.0))
         return ScoreComponent(
             name="events",
             value=round(value, 2),
@@ -423,11 +443,20 @@ class OpportunityEngine:
 
         recent_events = [e for e in events if (now - e.occurred_at).days <= 30]
 
-        if len(recent_events) >= 3 and score >= 60:
+        # ACCELERATION est une notion de DYNAMIQUE (les signaux se multiplient),
+        # pas de niveau : on la détecte sur les événements récents eux-mêmes.
+        # v1 utilisait `score >= 60` comme proxy — le plancher artificiel de
+        # company_quality faisait passer ce seuil ; v2 l'ayant retiré, le
+        # couplage stage/score est remplacé par un critère de dynamique réelle :
+        # au moins 3 événements récents ET un poids cumulé significatif
+        # (>= 25, soit p.ex. un critique + un élevé), pour ne pas qualifier
+        # d'accélération une rafale d'événements mineurs.
+        recent_boost = sum(e.score_boost for e in recent_events)
+        if len(recent_events) >= 3 and recent_boost >= 25.0:
             return (
                 OpportunityStage.ACCELERATION,
-                f"{len(recent_events)} événements détectés dans les 30 derniers jours "
-                "— les signaux se multiplient",
+                f"{len(recent_events)} événements significatifs détectés dans les "
+                "30 derniers jours — les signaux se multiplient",
             )
 
         if score >= 70 and len(events) >= 5:
