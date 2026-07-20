@@ -6,12 +6,13 @@ Agrège tous les routeurs de l'API v1.
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, catalysts, companies, discovery, events, graph, health, opportunity, snapshots, themes, watchlist
+from app.api.v1.endpoints import auth, catalysts, companies, company_import, discovery, events, graph, health, opportunity, snapshots, themes, watchlist
 
 router = APIRouter()
 
 router.include_router(health.router)
 router.include_router(auth.router)
+router.include_router(company_import.router)
 router.include_router(companies.router)
 router.include_router(themes.router)
 router.include_router(themes.companies_router)
