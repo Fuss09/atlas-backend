@@ -62,7 +62,10 @@ async def sync(provider_name: str, company_slug: str | None, sponsor_override: s
 
         created = updated = unchanged = 0
         for company in companies:
-            sponsor = sponsor_override or company.legal_name or company.name
+            # Nom COURT en priorité : les registres indexent « Abivax »,
+            # pas « ABIVAX Société Anonyme » (le legal_name est trop verbeux
+            # pour matcher). Override manuel si besoin.
+            sponsor = sponsor_override or company.name
             trials = await asyncio.to_thread(provider.fetch_for_sponsor, sponsor)
             for t in trials:
                 existing = existing_by_ext.get(t.external_id)
