@@ -159,8 +159,13 @@ class SecCollector(BaseCollector):
             result.add_error("fetch_ticker_list", str(e))
             raise
 
-        # Format : {"0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple Inc.", "exchange": "Nasdaq"}, ...}
-        entries = list(data.values())[:limit]
+        # Format columnar (actuel) : {"fields": ["cik","name","ticker","exchange"], "data": [[320193,"Apple Inc.","AAPL","Nasdaq"], ...]}
+        fields = data["fields"]
+        rows = data["data"]
+        entries = [dict(zip(fields, row)) for row in rows[:limit]]
+        for entry in entries:
+            entry["cik_str"] = entry.pop("cik", None)
+            entry["title"] = entry.pop("name", "")
         self.logger.info("SEC tickers fetched", count=len(entries))
 
         # Phase 2 : enrichissement par lots de 10 (avec pause)
@@ -173,7 +178,7 @@ class SecCollector(BaseCollector):
             if i + batch_size < len(entries):
                 await asyncio.sleep(self.REQUEST_DELAY * batch_size)
 
-        result.meta["total_tickers"] = len(data)
+        result.meta["total_tickers"] = len(rows)
         result.meta["processed"] = len(entries)
         self.logger.info(
             "SEC collection complete",
@@ -225,7 +230,6 @@ class SecCollector(BaseCollector):
             company_type=CompanyType.PUBLIC,
             sector=sector,
             industry=industry,
-            sic_code=sic_code,
             headquarters_state=state_of_inc,
             employees=employees,
             external_id=cik,
