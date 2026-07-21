@@ -38,6 +38,13 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Utilisateur non-root pour la sécurité
 RUN groupadd -r atlas && useradd -r -g atlas atlas
+
+# Cache des libs externes (yfinance/platformdirs) : l'utilisateur atlas n'a pas
+# de home inscriptible. On redirige XDG_CACHE_HOME vers /tmp (toujours
+# accessible en écriture) — sinon yfinance échoue à créer son cache, ce qui le
+# ralentit fortement et l'expose au rate-limit sur les gros runs.
+ENV XDG_CACHE_HOME=/tmp/atlas-cache
+
 USER atlas
 
 # Copier le code source
