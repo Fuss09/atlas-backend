@@ -122,8 +122,14 @@ class BaseCollector(ABC):
 
     # Timeout HTTP par défaut pour tous les collecteurs
     DEFAULT_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
-    # User-Agent clair pour les APIs publiques
-    USER_AGENT = "Atlas-Market-Intelligence/0.1 (contact: atlas@example.com)"
+    # User-Agent clair pour les APIs publiques.
+    # Construit depuis la config : SEC & co exigent un contact réel — voir
+    # COLLECTOR_CONTACT_EMAIL. Property (pas constante) pour lire le .env.
+    @property
+    def USER_AGENT(self) -> str:
+        from app.core.config import get_settings
+        s = get_settings()
+        return f"Atlas-Market-Intelligence/{s.app_version} (contact: {s.collector_contact_email})"
 
     def __init__(self, params: dict[str, Any] | None = None) -> None:
         self.params = params or {}

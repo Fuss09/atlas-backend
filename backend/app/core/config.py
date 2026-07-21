@@ -131,6 +131,12 @@ class Settings(BaseSettings):
     neo4j: Neo4jSettings = Field(default_factory=Neo4jSettings)
     jwt: JWTSettings = Field(default_factory=JWTSettings)
 
+    # Découverte / collectors
+    # SEC EDGAR (et bien d'autres APIs publiques) EXIGE un User-Agent avec un
+    # contact réel, sinon les requêtes sont bloquées/throttlées. Mets une vraie
+    # adresse via COLLECTOR_CONTACT_EMAIL dans le .env avant tout run réel.
+    collector_contact_email: str = Field(default="atlas@example.com")
+
     # Feature flags — utiles pendant le développement progressif
     feature_neo4j_enabled: bool = Field(default=True)
     feature_rabbitmq_enabled: bool = Field(default=True)
