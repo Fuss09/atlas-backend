@@ -10,10 +10,10 @@ from typing import Annotated
 from fastapi import Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.core.exceptions import AuthenticationError, InvalidTokenError, TokenExpiredError
+from app.core.exceptions import AuthenticationError, InvalidTokenError, PermissionDeniedError, TokenExpiredError
 from app.core.security import TokenType, decode_token
 from app.db.database import DbSession
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.user import UserService
 
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -78,3 +78,26 @@ class PaginationParams:
 
 
 Pagination = Annotated[PaginationParams, Depends(PaginationParams)]
+
+
+def require_authenticated(current_user: CurrentUser) -> User:
+    """Verrou global : exige un utilisateur connecté. Posé sur le routeur v1."""
+    return current_user
+
+
+def require_analyst(current_user: CurrentUser) -> None:
+    """Exige le rôle analyst ou admin."""
+    if current_user.role not in (UserRole.ANALYST, UserRole.ADMIN):
+        raise PermissionDeniedError(
+            "This action requires analyst or admin role",
+            details={"required_role": "analyst", "current_role": current_user.role},
+        )
+
+
+def require_admin(current_user: CurrentUser) -> None:
+    """Exige le rôle admin."""
+    if current_user.role != UserRole.ADMIN:
+        raise PermissionDeniedError(
+            "This action requires admin role",
+            details={"required_role": "admin", "current_role": current_user.role},
+        )

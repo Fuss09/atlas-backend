@@ -32,9 +32,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.deps import CurrentUser, DbSession, Pagination
-from app.core.exceptions import PermissionDeniedError
-from app.models.user import UserRole
+from app.api.deps import CurrentUser, DbSession, Pagination, require_admin, require_analyst
 from app.schemas.company import (
     CompanyCreate,
     CompanyListItem,
@@ -57,27 +55,6 @@ async def get_company_service(db: DbSession) -> CompanyService:
 
 
 CompanyServiceDep = Annotated[CompanyService, Depends(get_company_service)]
-
-
-def require_analyst(current_user: CurrentUser) -> None:
-    """
-    Vérifie que l'utilisateur est au moins analyst.
-    Injecté comme dépendance sur les endpoints d'écriture.
-    """
-    if current_user.role not in (UserRole.ANALYST, UserRole.ADMIN):
-        raise PermissionDeniedError(
-            "This action requires analyst or admin role",
-            details={"required_role": "analyst", "current_role": current_user.role},
-        )
-
-
-def require_admin(current_user: CurrentUser) -> None:
-    """Vérifie que l'utilisateur est admin."""
-    if current_user.role != UserRole.ADMIN:
-        raise PermissionDeniedError(
-            "This action requires admin role",
-            details={"required_role": "admin", "current_role": current_user.role},
-        )
 
 
 # ─── Endpoints de lecture (publics) ───────────────────────────────────────────
