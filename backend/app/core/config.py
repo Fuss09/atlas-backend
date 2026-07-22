@@ -137,6 +137,13 @@ class Settings(BaseSettings):
     # adresse via COLLECTOR_CONTACT_EMAIL dans le .env avant tout run réel.
     collector_contact_email: str = Field(default="atlas@example.com")
 
+    # Scheduler / cycle nocturne
+    scheduler_enabled: bool = Field(default=True)
+    scheduler_hour: int = Field(default=3)           # heure UTC de déclenchement
+    cycle_discovery_limit: int = Field(default=50)   # nouvelles entreprises/nuit
+    cycle_events_limit: int = Field(default=150)
+    cycle_events_days: int = Field(default=90)
+
     # Feature flags — utiles pendant le développement progressif
     feature_neo4j_enabled: bool = Field(default=True)
     feature_rabbitmq_enabled: bool = Field(default=True)

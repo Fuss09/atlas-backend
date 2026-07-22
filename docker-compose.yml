@@ -152,6 +152,40 @@ services:
       --reload
       --reload-dir /app/app
 
+  # ── Scheduler (cycle nocturne) ────────────────────────────────────────────────
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: atlas_scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Override avec les noms de containers Docker
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      NEO4J_URI: bolt://neo4j:7687
+    networks:
+      - atlas_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app  # Hot reload en développement
+    command: python -m scripts.scheduler
+    healthcheck:
+      disable: true  # Pas un serveur web — neutralise le HEALTHCHECK hérité du Dockerfile
+
   # ── Migration runner (one-shot) ──────────────────────────────────────────────
   migrate:
     build:
