@@ -32,7 +32,6 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logging import get_logger
 from app.models.company import Company
 from app.models.discovery import DiscoveryJob, DiscoverySourceName, JobStatus
-from app.models.event import EventType, ImportanceLevel
 from app.repositories.company import CompanyRepository
 from app.repositories.discovery import DiscoveryJobRepository, DiscoverySourceRepository
 from app.schemas.company import CompanyCreate, _generate_slug
@@ -262,8 +261,6 @@ class DiscoveryService:
             external_url=data.external_url,
             raw_data=data.raw_data,
         )
-        # Création automatique d'un event de découverte
-        await self._create_discovery_event(company, data, source)
         return "created"
 
     async def _find_existing(self, data: CompanyData) -> Company | None:
@@ -378,54 +375,3 @@ class DiscoveryService:
             data_sources=data_sources,
             last_enriched_at=datetime.now(UTC),
         )
-
-    async def _create_discovery_event(
-        self,
-        company: Company,
-        data: CompanyData,
-        source: DiscoverySourceName,
-    ) -> None:
-        """
-        Crée automatiquement un event de découverte lors de l'ajout d'une entreprise.
-        Appelé uniquement à la création (pas lors des mises à jour).
-        Importation locale pour éviter la circularité discovery ↔ event.
-        """
-        try:
-            from app.services.event import EventService
-
-            event_type_map = {
-                DiscoverySourceName.YCOMBINATOR: EventType.YC_DISCOVERY,
-                DiscoverySourceName.CRUNCHBASE: EventType.CRUNCHBASE_FUNDING,
-                DiscoverySourceName.GITHUB: EventType.GITHUB_ACTIVITY,
-                DiscoverySourceName.SEC: EventType.SEC_FILING,
-            }
-            event_type = event_type_map.get(source, EventType.NEWS)
-
-            importance_map = {
-                DiscoverySourceName.YCOMBINATOR: ImportanceLevel.HIGH,
-                DiscoverySourceName.CRUNCHBASE: ImportanceLevel.HIGH,
-                DiscoverySourceName.GITHUB: ImportanceLevel.MEDIUM,
-                DiscoverySourceName.SEC: ImportanceLevel.MEDIUM,
-            }
-            importance = importance_map.get(source, ImportanceLevel.LOW)
-
-            event_service = EventService(self.session)
-            await event_service.create_from_discovery(
-                company_id=company.id,
-                event_type=event_type,
-                title=f"New company discovered via {source.value.upper()}: {company.name}",
-                source=source.value,
-                source_url=data.external_url,
-                source_id=f"{source.value}_{data.external_id}" if data.external_id else None,
-                importance=importance,
-                confidence_score=0.85,
-                raw_data={"discovery_source": source.value, "external_id": data.external_id},
-            )
-        except Exception as exc:
-            # L'event est non-critique — on ne fait pas planter le job pour ça
-            self.logger.warning(
-                "Failed to create discovery event",
-                company_id=str(company.id),
-                source=source.value,
-                error=str(exc),
-            )
